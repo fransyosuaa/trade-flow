@@ -2,11 +2,10 @@
 
 import { useEffect } from 'react';
 import { useMarketStore } from '@/features/market/store/useMarketStore';
+import Chart from '@/features/market/components/Chart';
 
 export default function Home() {
-  // const price = useMarketStore((state) => state.price);
-  const { price, prevPrice } = useMarketStore();
-  const setPrice = useMarketStore((state) => state.setPrice);
+  const { price, prevPrice, changePercent, setPrice } = useMarketStore();
 
   const isUp = price > prevPrice;
 
@@ -26,6 +25,7 @@ export default function Home() {
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       const livePrice = parseFloat(data.bitcoin);
+      console.log('price update:', livePrice);
       setPrice(livePrice);
     };
 
@@ -40,11 +40,15 @@ export default function Home() {
         <h1 className='text-2xl mb-4'>TradeFlow</h1>
         <p className='text-xl'>BTC Price:</p>
         <p
-          className={`text-4xl font-bold ${isUp ? 'text-green-400' : 'text-red:400'}`}
+          className={`text-5xl font-bold transition-all duration-300 ${isUp ? 'text-green-400' : 'text-red:400'}`}
         >
           ${price.toLocaleString()}
         </p>
+        <p className={`text-xl ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+          {isUp ? '📈' : '📉'} {changePercent.toFixed(2)}%
+        </p>
       </div>
+      <Chart />
     </main>
   );
 }
