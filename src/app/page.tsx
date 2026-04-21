@@ -3,35 +3,49 @@
 import { useEffect } from 'react';
 import { useMarketStore } from '@/features/market/store/useMarketStore';
 import Chart from '@/features/market/components/Chart';
+import TradePanel from '@/features/trade/components/TradePanel';
 
 export default function Home() {
   const { price, prevPrice, changePercent, setPrice } = useMarketStore();
 
   const isUp = price > prevPrice;
 
+  // useEffect(() => {
+  //   // const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+  //   // const ws = new WebSocket('wss://stream.binance.com/ws/btcusdt@trade');
+
+  //   // ws.onmessage = (event) => {
+  //   //   const data = JSON.parse(event.data);
+  //   //   const livePrice = parseFloat(data.p);
+
+  //   //   setPrice(livePrice);
+  //   // };
+
+  //   const ws = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin');
+
+  //   ws.onmessage = (event) => {
+  //     const data = JSON.parse(event.data);
+  //     const livePrice = parseFloat(data.bitcoin);
+  //     console.log('price update:', livePrice);
+  //     setPrice(livePrice);
+  //   };
+
+  //   return () => {
+  //     ws.close();
+  //   };
+  // }, [setPrice]);
+
   useEffect(() => {
-    // const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
-    // const ws = new WebSocket('wss://stream.binance.com/ws/btcusdt@trade');
+    const interval = setInterval(() => {
+      const randomMove = (Math.random() - 0.5) * 50;
 
-    // ws.onmessage = (event) => {
-    //   const data = JSON.parse(event.data);
-    //   const livePrice = parseFloat(data.p);
+      setPrice((prev: number) => {
+        const base = prev || 75000;
+        return base + randomMove;
+      });
+    }, 500); // tiap 0.5 detik
 
-    //   setPrice(livePrice);
-    // };
-
-    const ws = new WebSocket('wss://ws.coincap.io/prices?assets=bitcoin');
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const livePrice = parseFloat(data.bitcoin);
-      console.log('price update:', livePrice);
-      setPrice(livePrice);
-    };
-
-    return () => {
-      ws.close();
-    };
+    return () => clearInterval(interval);
   }, [setPrice]);
 
   return (
@@ -49,6 +63,7 @@ export default function Home() {
         </p>
       </div>
       <Chart />
+      <TradePanel />
     </main>
   );
 }
