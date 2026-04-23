@@ -49,21 +49,28 @@ export default function Home() {
   }, [setPrice]);
 
   return (
-    <main className='flex h-screen items-center justify-center bg-black text-white'>
-      <div className='text-center'>
-        <h1 className='text-2xl mb-4'>TradeFlow</h1>
-        <p className='text-xl'>BTC Price:</p>
-        <p
-          className={`text-5xl font-bold transition-all duration-300 ${isUp ? 'text-green-400' : 'text-red:400'}`}
-        >
-          ${price.toLocaleString()}
+    <main className='flex gap-6 p-6 bg-black h-screen overflow-hidden'>
+      {/* LEFT */}
+      <div className='space-y-2 text-white w-[200px] shrink-0'>
+        <p className='text-gray-400'>BTC Price</p>
+        <p className='text-4xl font-bold'>
+          ${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </p>
-        <p className={`text-xl ${isUp ? 'text-green-400' : 'text-red-400'}`}>
-          {isUp ? '📈' : '📉'} {changePercent.toFixed(2)}%
+
+        <p className={isUp ? 'text-green-400' : 'text-red-400'}>
+          {changePercent.toFixed(2)}%
         </p>
       </div>
-      <Chart />
-      <TradePanel />
+
+      {/* CENTER */}
+      <div className='flex-1 min-w-0 overflow-hidden'>
+        <Chart />
+      </div>
+
+      {/* RIGHT */}
+      <div className='w-[300px] shrink-0'>
+        <TradePanel />
+      </div>
     </main>
   );
 }

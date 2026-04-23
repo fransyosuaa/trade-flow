@@ -50,7 +50,7 @@ export default function Chart() {
 
     const chart = createChart(chartRef.current, {
       width: chartRef.current.clientWidth || 600,
-      height: 300,
+      height: chartRef.current.clientHeight || 300,
       layout: {
         background: { color: '#000' },
         textColor: '#fff',
@@ -106,6 +106,23 @@ export default function Chart() {
     return () => chart.remove();
   }, []);
 
+  useEffect(() => {
+    if (!chartRef.current || !chartInstanceRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+
+      chartInstanceRef.current.applyOptions({
+        width,
+        height,
+      });
+    });
+
+    resizeObserver.observe(chartRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
   const price = useMarketStore((state) => state.price);
   const prevPrice = useMarketStore((state) => state.prevPrice);
 
@@ -152,11 +169,17 @@ export default function Chart() {
     }
 
     // 🔥 render candle berjalan
-    // seriesRef.current.update(candleRef.current);
+    seriesRef.current.update(candleRef.current);
     if (isAutoFollowRef.current) {
       chartInstanceRef.current?.timeScale().scrollToRealTime();
     }
   }, [price, prevPrice]);
+
+  const updatePositionByPrice = useTradeStore((s) => s.updatePositionByPrice);
+
+  useEffect(() => {
+    updatePositionByPrice(price);
+  }, [price, updatePositionByPrice]);
 
   return <div ref={chartRef} />;
 }
