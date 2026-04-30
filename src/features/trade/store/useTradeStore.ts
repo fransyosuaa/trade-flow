@@ -1,66 +1,83 @@
 import { create } from 'zustand';
 import { TradeHistory, TradeStore } from '../types/trade.type';
 
-export const useTradeStore = create<TradeStore>((set) => ({
+/**
+ * Zustand store for single-position trading system.
+ *
+ * Handles position, balance, history, and PnL updates.
+ * - Clean, readable, beginner-friendly.
+ * - Avoids unnecessary state mutation.
+ */
+
+export const useTradeStore = create<TradeStore>()((set, get) => ({
   position: null,
-  balance: 1000, // initial
+  balance: 1000,
   history: [],
 
-  openPosition: (pos) => set({ position: pos }),
-  closePosition: (price: number) =>
-    set((state) => {
-      if (!state.position) return {};
+  openPosition: (position) => {
+    // Only update if there's no currently open position
+    if (!get().position) {
+      set({ position });
+    }
+  },
 
-      const pos = state.position;
-      const pnl =
-        pos.type === 'BUY'
-          ? (price - pos.entry) * pos.lot
-          : (pos.entry - price) * pos.lot;
+  closePosition: (closePrice: number) => {
+    const { position, balance, history } = get();
+    if (!position) return;
 
-      const newBalance = state.balance + pnl;
+    // Calculate PnL based on position type
+    const pnl =
+      position.type === 'BUY'
+        ? (closePrice - position.entry) * position.lot
+        : (position.entry - closePrice) * position.lot;
 
-      const historyItem: TradeHistory = {
-        type: pos.type,
-        entry: pos.entry,
-        close: price,
-        pnl,
-        result: pnl >= 0 ? 'WIN' : 'LOSS',
-        time: Date.now(),
-      };
+    const updatedBalance = balance + pnl;
 
-      return {
-        position: null,
-        balance: newBalance,
-        history: [historyItem, ...state.history],
-      };
-    }),
-  updatePositionByPrice: (price: number) =>
-    set((state) => {
-      if (!state.position) return {};
+    const tradeHistory: TradeHistory = {
+      type: position.type,
+      entry: position.entry,
+      close: closePrice,
+      pnl,
+      result: pnl >= 0 ? 'WIN' : 'LOSS',
+      time: Date.now(),
+    };
 
-      const pos = state.position;
+    set({
+      position: null,
+      balance: updatedBalance,
+      history: [tradeHistory, ...history],
+    });
+  },
 
-      const pnl =
-        pos.type === 'BUY'
-          ? (price - pos.entry) * pos.lot
-          : (pos.entry - price) * pos.lot;
+  updatePositionByPrice: (price: number) => {
+    const { position } = get();
+    if (!position) return;
 
-      if (pnl === pos.pnl) return {};
+    // Calculate new PnL
+    const pnl =
+      position.type === 'BUY'
+        ? (price - position.entry) * position.lot
+        : (position.entry - price) * position.lot;
 
-      let isOpen = true;
+    // Only update state if PnL or isOpen changes, to prevent extra re-renders
+    if (pnl === position.pnl && position.isOpen) return;
 
-      if (pos.type === 'BUY') {
-        if (price >= pos.tp || price <= pos.sl) isOpen = false;
-      } else {
-        if (price <= pos.tp || price >= pos.sl) isOpen = false;
-      }
+    let isOpen = true;
+    if (position.type === 'BUY') {
+      if (price >= position.tp || price <= position.sl) isOpen = false;
+    } else {
+      if (price <= position.tp || price >= position.sl) isOpen = false;
+    }
 
-      return {
+    // Only update if required
+    if (pnl !== position.pnl || isOpen !== position.isOpen) {
+      set({
         position: {
-          ...pos,
+          ...position,
           pnl,
           isOpen,
         },
-      };
-    }),
+      });
+    }
+  },
 }));
