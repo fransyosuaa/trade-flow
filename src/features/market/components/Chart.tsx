@@ -3,6 +3,9 @@
 import { useRef, useEffect } from 'react';
 import {
   createChart,
+  createSeriesMarkers,
+  Time,
+  SeriesMarker,
   CandlestickSeries,
   IChartApi,
   ISeriesApi,
@@ -13,29 +16,36 @@ import { useMarketStore } from '@/features/market/store/useMarketStore';
 import { useTradeStore } from '@/features/trade/store/useTradeStore';
 
 // --- Chart Logic ---
+type EntryLine = ReturnType<
+  ISeriesApi<'Candlestick'>['createPriceLine']
+> | null;
 
 type ChartRefs = {
   chart: IChartApi | null;
   series: ISeriesApi<'Candlestick'> | null;
   candle: CandlestickData | null;
-  entryLine: ReturnType<ISeriesApi<'Candlestick'>['createPriceLine']> | null;
+  entryLine: EntryLine;
   isAutoFollow: boolean;
   lastLogical: number;
+  markers: ReturnType<typeof createSeriesMarkers> | null;
 };
 
 function useLightweightChart(
   containerRef: React.RefObject<HTMLDivElement>,
   price: number,
   prevPrice: number,
-  position: { entry: number; type: string } | null,
+  position: { entry: number; type: string; tp?: number; sl?: number } | null,
 ) {
-  const refs = useRef<ChartRefs>({
+  const refs = useRef<ChartRefs & { tpLine?: EntryLine; slLine?: EntryLine }>({
     chart: null,
     series: null,
     candle: null,
     entryLine: null,
     isAutoFollow: true,
     lastLogical: 0,
+    markers: null,
+    tpLine: null,
+    slLine: null,
   });
 
   // Initialize chart and series
@@ -135,15 +145,26 @@ function useLightweightChart(
     }
   }, [price, prevPrice]);
 
-  // Entry Line
+  // Entry Line, TP, and SL lines
   useEffect(() => {
     const r = refs.current;
     if (!r.series) return;
+    // Remove previous lines
     if (r.entryLine) {
       r.series.removePriceLine(r.entryLine);
       r.entryLine = null;
     }
+    if (r.tpLine) {
+      r.series.removePriceLine(r.tpLine);
+      r.tpLine = null;
+    }
+    if (r.slLine) {
+      r.series.removePriceLine(r.slLine);
+      r.slLine = null;
+    }
+
     if (!position) return;
+    // Entry line
     r.entryLine = r.series.createPriceLine({
       price: position.entry,
       color: position.type === 'BUY' ? '#00ff88' : '#ff4d4f',
@@ -152,7 +173,61 @@ function useLightweightChart(
       axisLabelVisible: true,
       title: position.type,
     });
+    // TP line (green dashed)
+    if ('tp' in position && typeof position.tp === 'number') {
+      r.tpLine = r.series.createPriceLine({
+        price: position.tp,
+        color: '#00ff88',
+        lineWidth: 2,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: '',
+      });
+    }
+    // SL line (red dashed)
+    if ('sl' in position && typeof position.sl === 'number') {
+      r.slLine = r.series.createPriceLine({
+        price: position.sl,
+        color: '#ff4d4f',
+        lineWidth: 2,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: '',
+      });
+    }
   }, [position]);
+
+  // Marker for trade entry
+  useEffect(() => {
+    const r = refs.current;
+    if (!r.series) return;
+
+    // We'll use a single marker at the current open position
+    if (!position) {
+      r.markers?.setMarkers([]);
+      return;
+    }
+
+    // Find the candle with time matching the entry price
+    // We'll simply use the current candle - this matches the "open now" context
+    const candleTime = r.candle?.time;
+    if (!candleTime) return;
+
+    r.markers?.setMarkers([]); // clear dulu
+
+    const markers: SeriesMarker<Time>[] = [
+      {
+        time: candleTime,
+        position: position.type === 'BUY' ? 'belowBar' : 'aboveBar',
+        color: position.type === 'BUY' ? '#00ff88' : '#ff4d4f',
+        shape: position.type === 'BUY' ? 'arrowUp' : 'arrowDown',
+        text: position.type,
+      },
+    ];
+    r.markers = createSeriesMarkers<Time>(r.series, markers) as ReturnType<
+      typeof createSeriesMarkers
+    >;
+  }, [position, price]);
 
   // UI API
   return refs;
