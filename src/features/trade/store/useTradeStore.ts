@@ -53,31 +53,31 @@ export const useTradeStore = create<TradeStore>()((set, get) => ({
     const { position } = get();
     if (!position) return;
 
+    const hitTP =
+      position.type === 'BUY' ? price >= position.tp : price <= position.tp;
+
+    const hitSL =
+      position.type === 'BUY' ? price <= position.sl : price >= position.sl;
+
+    if (hitTP || hitSL) {
+      get().closePosition(price);
+      return;
+    }
+
     // Calculate new PnL
     const pnl =
       position.type === 'BUY'
         ? (price - position.entry) * position.lot
         : (position.entry - price) * position.lot;
 
-    // Only update state if PnL or isOpen changes, to prevent extra re-renders
-    if (pnl === position.pnl && position.isOpen) return;
+    // Prevent unnecessary re-render
+    if (pnl === position.pnl) return;
 
-    let isOpen = true;
-    if (position.type === 'BUY') {
-      if (price >= position.tp || price <= position.sl) isOpen = false;
-    } else {
-      if (price <= position.tp || price >= position.sl) isOpen = false;
-    }
-
-    // Only update if required
-    if (pnl !== position.pnl || isOpen !== position.isOpen) {
-      set({
-        position: {
-          ...position,
-          pnl,
-          isOpen,
-        },
-      });
-    }
+    set({
+      position: {
+        ...position,
+        pnl,
+      },
+    });
   },
 }));

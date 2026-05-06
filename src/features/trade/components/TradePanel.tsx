@@ -144,7 +144,7 @@ export default function TradePanel() {
           onBuy={handleBuy}
           onSell={handleSell}
           onClose={handleClose}
-          disabled={!!position && position.isOpen === false}
+          disabled={!!position}
         />
         {position && <PositionPnL pnl={position.pnl} />}
       </div>
